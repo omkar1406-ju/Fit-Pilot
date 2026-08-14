@@ -1,0 +1,214 @@
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.dashboard-layout__main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-left: 240px;
+}
+
+.dashboard-layout__content {
+  flex: 1;
+  padding: 28px;
+}
+
+.dashboard__greeting {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.dashboard__date {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin-bottom: 28px;
+}
+
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.dashboard__card {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+.dashboard__card--highlight {
+  border-color: var(--color-primary);
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, rgba(37, 99, 235, 0.06) 100%);
+}
+
+.dashboard__card-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.dashboard__card-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.dashboard__card-subtext {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+}
+
+.dashboard__card-icon {
+  font-size: 1.5rem;
+  margin-bottom: 12px;
+}
+
+.dashboard__section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.dashboard__bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.dashboard__workout-card {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.dashboard__workout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.dashboard__workout-type {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.dashboard__workout-duration {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  background-color: var(--color-bg-input);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+}
+
+.dashboard__exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.dashboard__exercise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background-color: var(--color-bg-input);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+}
+
+.dashboard__exercise-name {
+  font-weight: 500;
+}
+
+.dashboard__exercise-info {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.dashboard__quick-actions {
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.dashboard__actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.dashboard__action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background-color: var(--color-bg-input);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.dashboard__action-btn:hover {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.dashboard__action-icon {
+  font-size: 1.125rem;
+}
+
+.dashboard__progress-section {
+  margin-bottom: 28px;
+}
+
+.dashboard__progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .dashboard__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard__bottom-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-layout__main {
+    margin-left: 0;
+  }
+
+  .dashboard-layout__content {
+    padding: 16px;
+  }
+
+  .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__progress-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__actions-grid {
+    grid-template-columns: 1fr;
+  }
+}
