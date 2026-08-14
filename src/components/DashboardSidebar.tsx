@@ -1,4 +1,5 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import './DashboardSidebar.css';
 
 const navItems = [
@@ -12,6 +13,13 @@ const navItems = [
 
 export default function DashboardSidebar() {
   const location = useLocation();
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
+  };
 
   return (
     <aside className="dashboard-sidebar">
@@ -36,10 +44,10 @@ export default function DashboardSidebar() {
       </nav>
 
       <div className="dashboard-sidebar__footer">
-        <Link to="/" className="dashboard-sidebar__logout">
+        <button onClick={handleLogout} className="dashboard-sidebar__logout">
           <span className="dashboard-sidebar__link-icon">🚪</span>
           Log Out
-        </Link>
+        </button>
       </div>
     </aside>
   );
