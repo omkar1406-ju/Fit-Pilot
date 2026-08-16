@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
+import EditProfile from './pages/EditProfile';
 
 export default function App() {
   return (
@@ -19,6 +20,14 @@ export default function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/onboarding" element={<OnboardingGuard><Onboarding /></OnboardingGuard>} />
+          <Route
+            path="/dashboard/profile"
+            element={
+              <ProtectedRoute>
+                <EditProfile />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/dashboard/*"
             element={

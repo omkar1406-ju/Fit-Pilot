@@ -1,10 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 interface Profile {
   id: string;
+  name: string | null;
   age: number | null;
   height: number | null;
   weight: number | null;
@@ -44,15 +45,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const initialSessionResolved = useRef(false);
+  const currentUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
 
+    if (error) {
+      console.error('[AUTH] fetchProfile error:', error.message, error.code, error.details, error.hint);
+    }
+
     setProfile(data as Profile | null);
+
+    if (import.meta.env.DEV) {
+      console.log('[AUTH] PROFILE:', data ? 'exists' : 'not found');
+      if (data) {
+        console.log('[AUTH] ONBOARDING:', data.onboarding_completed ? 'complete' : 'incomplete');
+      }
+    }
   };
 
   const refreshProfile = async () => {
@@ -63,20 +77,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      if (currentSession?.user) {
-        fetchProfile(currentSession.user.id).finally(() => setLoading(false));
+      const currentUser = currentSession?.user ?? null;
+      setUser(currentUser);
+      currentUserIdRef.current = currentUser?.id ?? null;
+
+      if (import.meta.env.DEV) {
+        console.log('[AUTH]', currentUser ? 'authenticated' : 'no session');
+        if (currentUser) console.log('[AUTH] USER:', currentUser.id);
+      }
+
+      if (currentUser) {
+        fetchProfile(currentUser.id).finally(() => {
+          initialSessionResolved.current = true;
+          setLoading(false);
+        });
       } else {
+        initialSessionResolved.current = true;
         setLoading(false);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (newSession?.user) {
-        fetchProfile(newSession.user.id);
+      const newUser = newSession?.user ?? null;
+      setUser(newUser);
+
+      if (newUser) {
+        if (newUser.id !== currentUserIdRef.current) {
+          currentUserIdRef.current = newUser.id;
+          if (initialSessionResolved.current) {
+            setLoading(true);
+            fetchProfile(newUser.id).finally(() => setLoading(false));
+          }
+        }
       } else {
+        currentUserIdRef.current = null;
         setProfile(null);
       }
     });
@@ -100,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    currentUserIdRef.current = null;
     setUser(null);
     setProfile(null);
     setSession(null);

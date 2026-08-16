@@ -17,13 +17,14 @@ const goalOptions = [
 ];
 
 export default function Onboarding() {
-  const { user, refreshProfile } = useAuth();
+  const { refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const [formData, setFormData] = useState({
+    name: '',
     age: '',
     height: '',
     weight: '',
@@ -53,12 +54,31 @@ export default function Onboarding() {
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
-    setLoading(true);
     setError('');
 
-    const { error: insertError } = await supabase.from('profiles').upsert({
-      id: user.id,
+    // Step 1: Verify authenticated user via getUser (not just client state)
+    console.log('[ONBOARDING] Verifying auth...');
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+
+    if (authError) {
+      console.error('[ONBOARDING] Auth error:', authError.message, authError.code, authError.status);
+      setError(`Auth error: ${authError.message}`);
+      return;
+    }
+
+    if (!authUser) {
+      console.error('[ONBOARDING] No authenticated user found.');
+      setError('You are not logged in. Please log in again.');
+      return;
+    }
+
+    console.log('[ONBOARDING] Authenticated user ID:', authUser.id);
+
+    setLoading(true);
+
+    const payload = {
+      id: authUser.id,
+      name: formData.name.trim() || null,
       age: formData.age ? parseInt(formData.age) : null,
       height: formData.height ? parseFloat(formData.height) : null,
       weight: formData.weight ? parseFloat(formData.weight) : null,
@@ -75,14 +95,43 @@ export default function Onboarding() {
       health_conditions: formData.health_conditions || null,
       onboarding_completed: true,
       updated_at: new Date().toISOString(),
-    });
+    };
+
+    console.log('[ONBOARDING] Upserting into table: profiles');
+    console.log('[ONBOARDING] Payload:', payload);
+
+    const { data, error: insertError } = await supabase.from('profiles').upsert(payload);
 
     setLoading(false);
 
     if (insertError) {
-      setError('Failed to save your profile. Please try again.');
+      console.error('[ONBOARDING] ====== SUPABASE UPSERT ERROR ======');
+      console.error('[ONBOARDING] error.message:', insertError.message);
+      console.error('[ONBOARDING] error.code:', insertError.code);
+      console.error('[ONBOARDING] error.details:', insertError.details);
+      console.error('[ONBOARDING] error.hint:', insertError.hint);
+      console.error('[ONBOARDING] Full error object:', JSON.stringify(insertError, null, 2));
+      console.error('[ONBOARDING] ====== END ERROR ======');
+
+      if (insertError.code === '42501') {
+        setError(
+          'RLS policy is blocking the save. Go to Supabase Dashboard → SQL Editor and run this SQL:\n\n' +
+          'ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;\n' +
+          'DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;\n' +
+          'DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;\n' +
+          'DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;\n' +
+          'CREATE POLICY "Users can insert their own profile" ON profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);\n' +
+          'CREATE POLICY "Users can view their own profile" ON profiles FOR SELECT TO authenticated USING (auth.uid() = id);\n' +
+          'CREATE POLICY "Users can update their own profile" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);\n\n' +
+          'Then refresh this page and try again.'
+        );
+      } else {
+        setError(`Save failed: [${insertError.code}] ${insertError.message}`);
+      }
       return;
     }
+
+    console.log('[ONBOARDING] Upsert succeeded. Returned data:', data);
 
     await refreshProfile();
     navigate('/dashboard');
@@ -119,6 +168,10 @@ export default function Onboarding() {
               <h2 className="onboarding__form-title">About You</h2>
               <p className="onboarding__form-subtitle">Tell us a bit about yourself so we can personalize your experience.</p>
               <div className="onboarding__form-grid">
+                <div className="onboarding__form-group onboarding__form-group--full">
+                  <label className="onboarding__form-label">Name</label>
+                  <input className="onboarding__form-input" type="text" placeholder="e.g. Pushkar Kumar" value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+                </div>
                 <div className="onboarding__form-group">
                   <label className="onboarding__form-label">Age</label>
                   <input className="onboarding__form-input" type="number" placeholder="e.g. 25" value={formData.age} onChange={(e) => updateField('age', e.target.value)} />

@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { getGreeting } from '../lib/greeting';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
 import ChatButton from '../components/ChatButton';
@@ -6,8 +8,15 @@ import './Dashboard.css';
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const [greeting, setGreeting] = useState(getGreeting);
+
+  useEffect(() => {
+    const interval = setInterval(() => setGreeting(getGreeting()), 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const goalLabel = profile?.goal || 'Not set';
+  const displayName = profile?.name?.trim() || 'there';
 
   return (
     <div className="dashboard-layout">
@@ -15,7 +24,7 @@ export default function Dashboard() {
       <div className="dashboard-layout__main">
         <DashboardHeader />
         <div className="dashboard-layout__content">
-          <h2 className="dashboard__greeting">Welcome to FitPilot 👋</h2>
+          <h2 className="dashboard__greeting">{greeting}, {displayName} 👋</h2>
           <p className="dashboard__date">Your personalized fitness dashboard</p>
 
           <div className="dashboard__grid">

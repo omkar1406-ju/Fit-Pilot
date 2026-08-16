@@ -9,6 +9,7 @@ const navItems = [
   { icon: '🍽️', label: 'Nutrition', path: '/dashboard/nutrition' },
   { icon: '🎯', label: 'Goals', path: '/dashboard/goals' },
   { icon: '🤖', label: 'Assistant', path: '/dashboard/assistant' },
+  { icon: '👤', label: 'Edit Profile', path: '/dashboard/profile' },
 ];
 
 export default function DashboardSidebar() {
@@ -18,7 +19,7 @@ export default function DashboardSidebar() {
 
   const handleLogout = async () => {
     await signOut();
-    navigate('/login');
+    navigate('/');
   };
 
   return (

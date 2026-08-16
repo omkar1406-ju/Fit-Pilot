@@ -73,6 +73,18 @@
   padding: 36px 32px;
 }
 
+.auth-error {
+  padding: 10px 14px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: 0.875rem;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .onboarding__form-title {
   font-size: 1.25rem;
   font-weight: 700;

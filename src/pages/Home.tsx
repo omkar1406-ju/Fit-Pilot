@@ -48,12 +48,12 @@ export default function Home() {
                 FitPilot creates a personalized fitness experience built around your goals, your lifestyle, and your pace. No guesswork — just a clear path forward.
               </p>
               <div className="hero__actions">
-                <Link to="/dashboard">
+                <Link to="/signup">
                   <Button size="lg">Get Started</Button>
                 </Link>
-                <a href="#how-it-works">
-                  <Button variant="secondary" size="lg">How It Works</Button>
-                </a>
+                <Link to="/login">
+                  <Button variant="secondary" size="lg">Login</Button>
+                </Link>
               </div>
             </div>
             <div className="hero__visual">
@@ -147,7 +147,7 @@ export default function Home() {
         <div className="container">
           <h2 className="cta__title">Ready to start your journey?</h2>
           <p className="cta__desc">Join FitPilot and discover what consistent, personalized training can do for you.</p>
-          <Link to="/dashboard">
+          <Link to="/signup">
             <Button size="lg">Get Started</Button>
           </Link>
         </div>
