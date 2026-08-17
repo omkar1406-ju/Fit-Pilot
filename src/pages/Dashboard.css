@@ -81,7 +81,7 @@
   gap: 20px;
 }
 
-.dashboard__workout-card {
+.dashboard__workout-section {
   background-color: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -98,6 +98,23 @@
 .dashboard__workout-type {
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.dashboard__change-plan-btn {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dashboard__change-plan-btn:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: var(--color-primary);
 }
 
 .dashboard__workout-duration {

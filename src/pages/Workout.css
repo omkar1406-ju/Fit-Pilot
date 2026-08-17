@@ -1,0 +1,112 @@
+.workout-page__top {
+  margin-bottom: 28px;
+}
+
+.workout-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.workout-page__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+.workout-page__change-btn {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-light);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: var(--radius-md);
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.workout-page__change-btn:hover {
+  background: rgba(37, 99, 235, 0.2);
+  border-color: var(--color-primary);
+}
+
+.workout-page__subtitle {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.workout-page__content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.workout-page__section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.workout-page__day-detail {
+  margin-top: 16px;
+}
+
+.workout-page__create {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+  background-color: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.workout-page__create-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background-color: var(--color-primary);
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.workout-page__create-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+
+.workout-page__error {
+  padding: 14px 18px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.workout-page__error-sql {
+  margin-top: 10px;
+}
+
+.workout-page__error-sql p {
+  margin-bottom: 6px;
+}
+
+.workout-page__error-sql pre {
+  background-color: var(--color-bg-input);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  overflow-x: auto;
+  color: var(--color-text-secondary);
+}

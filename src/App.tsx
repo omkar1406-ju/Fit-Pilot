@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
+import Workout from './pages/Workout';
 import EditProfile from './pages/EditProfile';
 
 export default function App() {
@@ -25,6 +26,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <EditProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/workouts"
+            element={
+              <ProtectedRoute>
+                <Workout />
               </ProtectedRoute>
             }
           />
