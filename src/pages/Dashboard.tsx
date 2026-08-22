@@ -217,7 +217,7 @@ export default function Dashboard() {
                   <span className="dashboard__action-icon">💪</span>
                   Start Workout
                 </button>
-                <button className="dashboard__action-btn">
+                <button className="dashboard__action-btn" onClick={() => navigate('/dashboard/nutrition')}>
                   <span className="dashboard__action-icon">🥗</span>
                   Log Meal
                 </button>
@@ -233,9 +233,15 @@ export default function Dashboard() {
 
               <div style={{ marginTop: '20px' }}>
                 <h3 className="dashboard__section-title">Nutrition</h3>
-                <div className="dashboard__empty-state" style={{ padding: '16px' }}>
-                  <p className="dashboard__empty-desc" style={{ margin: 0 }}>Nutrition tracking will be available soon.</p>
-                </div>
+                <button
+                  className="dashboard__empty-state"
+                  style={{ padding: '16px', cursor: 'pointer', width: '100%', textAlign: 'left' }}
+                  onClick={() => navigate('/dashboard/nutrition')}
+                >
+                  <p className="dashboard__empty-desc" style={{ margin: 0 }}>
+                    🍽️ Set up your personalized nutrition plan →
+                  </p>
+                </button>
               </div>
             </div>
           </div>

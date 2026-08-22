@@ -10,6 +10,7 @@ import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
 import Workout from './pages/Workout';
 import EditProfile from './pages/EditProfile';
+import Nutrition from './pages/Nutrition';
 
 export default function App() {
   return (
@@ -34,6 +35,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Workout />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/nutrition"
+            element={
+              <ProtectedRoute>
+                <Nutrition />
               </ProtectedRoute>
             }
           />
