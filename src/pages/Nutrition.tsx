@@ -16,6 +16,9 @@ import { mealTypeLabels } from '../data/foodDatabase';
 import Button from '../components/Button';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
+import MealScanner from '../components/MealScanner';
+import { getScannedMealsForDate, aggregateScannedTotals } from '../lib/scannerService';
+import type { ScannedMealWithFoods } from '../types/scannedMeal';
 import './Nutrition.css';
 
 const QUOTES = [
@@ -188,6 +191,8 @@ export default function Nutrition() {
   const [changingDay, setChangingDay] = useState('');
   const [savingAlt, setSavingAlt] = useState(false);
   const [quote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedMeals, setScannedMeals] = useState<ScannedMealWithFoods[]>([]);
 
   const [formData, setFormData] = useState({
     occupation: '',
@@ -237,6 +242,12 @@ export default function Nutrition() {
         }
       }
     }
+
+    // Load scanned meals for today
+    const todayDate = new Date().toISOString().split('T')[0];
+    const { meals: todayScanned } = await getScannedMealsForDate(user.id, todayDate);
+    setScannedMeals(todayScanned);
+
     setLoading(false);
   }, [user, profile]);
 
@@ -255,6 +266,13 @@ export default function Nutrition() {
     }
     return `Failed to save: ${err}`;
   };
+
+  const reloadScannedMeals = useCallback(async () => {
+    if (!user) return;
+    const todayDate = new Date().toISOString().split('T')[0];
+    const { meals } = await getScannedMealsForDate(user.id, todayDate);
+    setScannedMeals(meals);
+  }, [user]);
 
   const handleOnboardingSubmit = async () => {
     if (!user || !profile) return;
@@ -405,6 +423,7 @@ export default function Nutrition() {
 
     const days: GeneratedDayPlan[] = [];
     const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const todayName = getTodayName();
 
     for (const dayName of dayNames) {
       const dayMeals = plan.meals.filter((pm) => pm.day_of_week === dayName);
@@ -420,20 +439,53 @@ export default function Nutrition() {
         }
       }
 
+      // Add scanned meals as a separate "Scanned" group for today
+      if (dayName === todayName && scannedMeals.length > 0) {
+        const scannedFoodsFlat = scannedMeals.flatMap((sm) =>
+          sm.foods.map((f) => ({
+            id: f.id,
+            nutrition_meal_id: sm.id,
+            food_name: f.food_name,
+            quantity: `${f.quantity_grams}g`,
+            calories: f.calories,
+            protein: f.protein,
+            carbs: f.carbs,
+            fat: f.fat,
+            fiber: f.fiber,
+            meal_type: 'scanned',
+            order_index: f.order_index,
+          })),
+        );
+        mealTypeMap.set('scanned', scannedFoodsFlat as unknown as NutritionFood[]);
+      }
+
       const groupedMeals = Array.from(mealTypeMap.entries()).map(([mealType, foods]) => ({
         type: mealType,
-        label: mealTypeLabels[mealType] || mealType,
+        label: mealType === 'scanned' ? 'Scanned Meals' : (mealTypeLabels[mealType] || mealType),
         foods: foods as unknown as import('../types/nutrition').FoodItem[],
       }));
 
       const allFoods = dayMeals.flatMap((pm) => pm.foods);
-      const totals = {
+      const planTotals = {
         calories: Math.round(allFoods.reduce((s, f) => s + f.calories, 0)),
         protein: Math.round(allFoods.reduce((s, f) => s + f.protein, 0)),
         carbs: Math.round(allFoods.reduce((s, f) => s + f.carbs, 0)),
         fat: Math.round(allFoods.reduce((s, f) => s + f.fat, 0)),
         fiber: Math.round(allFoods.reduce((s, f) => s + f.fiber, 0)),
       };
+
+      // Add scanned meal totals for today
+      let totals = planTotals;
+      if (dayName === todayName && scannedMeals.length > 0) {
+        const scannedTotals = aggregateScannedTotals(scannedMeals);
+        totals = {
+          calories: planTotals.calories + scannedTotals.calories,
+          protein: Math.round((planTotals.protein + scannedTotals.protein) * 10) / 10,
+          carbs: Math.round((planTotals.carbs + scannedTotals.carbs) * 10) / 10,
+          fat: Math.round((planTotals.fat + scannedTotals.fat) * 10) / 10,
+          fiber: Math.round((planTotals.fiber + scannedTotals.fiber) * 10) / 10,
+        };
+      }
 
       days.push({
         dayOfWeek: dayName,
@@ -444,7 +496,7 @@ export default function Nutrition() {
     }
 
     return days.length > 0 ? days : null;
-  }, [plan]);
+  }, [plan, scannedMeals]);
 
   const weeklyDays = buildWeeklyFromPlan();
   const selectedDayData = weeklyDays?.find((d) => d.dayOfWeek === selectedDay);
@@ -624,6 +676,9 @@ export default function Nutrition() {
               <p className="nutrition__page-sub">Your personalized daily diet plan</p>
             </div>
             <div className="nutrition__header-actions">
+              <button className="nutrition__scan-btn" onClick={() => setShowScanner((prev) => !prev)}>
+                {showScanner ? 'Close Scanner' : '📷 Scan My Meal'}
+              </button>
               <button className="nutrition__edit-btn" onClick={() => {
                 setFormData({
                   occupation: prefs?.occupation || '',
@@ -657,6 +712,12 @@ export default function Nutrition() {
               <strong>Your budget is tight.</strong> Your current budget makes the full nutrition target difficult to reach.
               We've optimized the plan for the best nutritional value possible within your budget, prioritizing protein-rich foods.
               To improve your results, consider increasing your daily budget or reducing your meal count.
+            </div>
+          )}
+
+          {showScanner && user && (
+            <div className="nutrition__scanner-wrap">
+              <MealScanner userId={user.id} onSaved={reloadScannedMeals} />
             </div>
           )}
 
