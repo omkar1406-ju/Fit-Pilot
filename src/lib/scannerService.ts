@@ -2,10 +2,205 @@ import { supabase } from './supabase';
 import { foodDatabase } from '../data/foodDatabase';
 import type { FoodItem } from '../types/nutrition';
 import type { ScannedMealWithFoods, ScannedFood, ScannedFoodTotals } from '../types/scannedMeal';
+import { analyzeMealImage } from './groqService';
 
 export interface ScannedFoodItem {
   food: FoodItem;
   quantityGrams: number;
+}
+
+export interface MatchedFood {
+  food: FoodItem;
+  quantityGrams: number;
+  confidence: 'matched' | 'unmatched';
+  aiDetectedName: string;
+}
+
+function matchFoodToDatabase(aiName: string): FoodItem | null {
+  const lower = aiName.toLowerCase().trim();
+
+  const exact = foodDatabase.find((f) => f.name.toLowerCase() === lower);
+  if (exact) return exact;
+
+  const contains = foodDatabase.find((f) => f.name.toLowerCase().includes(lower));
+  if (contains) return contains;
+
+  const reverseContains = foodDatabase.find((f) => lower.includes(f.name.toLowerCase().replace(/\s*\(.*\)\s*/g, '')));
+  if (reverseContains) return reverseContains;
+
+  const keywords: Record<string, string> = {
+    // Grains & staples
+    'rice': 'White Rice (cooked)',
+    'roti': 'Whole Wheat Roti',
+    'chapati': 'Whole Wheat Roti',
+    'naan': 'Whole Wheat Roti',
+    'bread': 'Bread (whole wheat)',
+    'toast': 'Bread (whole wheat)',
+    'sandwich': 'Bread (whole wheat)',
+    'wrap': 'Bread (whole wheat)',
+    'pita': 'Whole Wheat Roti',
+    'tortilla': 'Whole Wheat Roti',
+    'oats': 'Oats (cooked)',
+    'oat': 'Oats (cooked)',
+    'oatmeal': 'Oats (cooked)',
+    'granola': 'Oats (cooked)',
+    'muesli': 'Oats (cooked)',
+    'cereal': 'Oats (cooked)',
+    'cornflakes': 'Oats (cooked)',
+    'muffin': 'Bread (whole wheat)',
+    'pancake': 'Dosa (plain)',
+    'waffle': 'Dosa (plain)',
+    'idli': 'Idli (2 pieces)',
+    'dosa': 'Dosa (plain)',
+    'poha': 'Poha (cooked)',
+    'upma': 'Upma',
+    'ragi': 'Ragi Porridge',
+
+    // Protein - vegetarian
+    'dal': 'Moong Dal (cooked)',
+    'lentil': 'Moong Dal (cooked)',
+    'moong': 'Moong Dal (cooked)',
+    'masoor': 'Masoor Dal (cooked)',
+    'toor': 'Toor Dal (cooked)',
+    'chana dal': 'Chana Dal (cooked)',
+    'rajma': 'Rajma (cooked)',
+    'kidney bean': 'Rajma (cooked)',
+    'black bean': 'Rajma (cooked)',
+    'chole': 'Chole (cooked)',
+    'chickpea': 'Chole (cooked)',
+    'chana': 'Boiled Chana (100g)',
+    'paneer': 'Paneer (cottage cheese)',
+    'cottage cheese': 'Paneer (cottage cheese)',
+    'tofu': 'Tofu',
+    'peanut': 'Peanuts',
+    'peanut butter': 'Peanut Butter',
+    'milk': 'Milk (whole)',
+    'curd': 'Curd / Yogurt',
+    'yogurt': 'Curd / Yogurt',
+    'buttermilk': 'Buttermilk (Chaas)',
+    'chaas': 'Buttermilk (Chaas)',
+    'sprout': 'Sprouts Salad',
+    'sprouted': 'Sprouted Moong',
+    'soy milk': 'Soy Milk',
+    'soymilk': 'Soy Milk',
+    'soy': 'Soy Chunks (cooked)',
+    'soya': 'Soy Chunks (cooked)',
+
+    // Protein - non-vegetarian
+    'egg': 'Boiled Eggs',
+    'boiled egg': 'Boiled Eggs',
+    'fried egg': 'Egg Omelette (2 eggs)',
+    'scrambled egg': 'Boiled Eggs',
+    'omelette': 'Egg Omelette (2 eggs)',
+    'omelet': 'Egg Omelette (2 eggs)',
+    'french toast': 'Egg Omelette (2 eggs)',
+    'chicken': 'Chicken Breast (grilled)',
+    'chicken curry': 'Chicken Curry (homestyle)',
+    'chicken breast': 'Chicken Breast (grilled)',
+    'chicken wing': 'Chicken Breast (grilled)',
+    'fish': 'Fish (roasted)',
+    'salmon': 'Fish (roasted)',
+    'tuna': 'Fish (roasted)',
+    'shrimp': 'Fish (roasted)',
+    'prawn': 'Fish (roasted)',
+    'mutton': 'Mutton Curry',
+    'lamb': 'Mutton Curry',
+    'beef': 'Mutton Curry',
+
+    // Vegetables
+    'arugula': 'Palak (Spinach)',
+    'lettuce': 'Palak (Spinach)',
+    'rocket': 'Palak (Spinach)',
+    'spinach': 'Palak (Spinach)',
+    'palak': 'Palak (Spinach)',
+    'kale': 'Palak (Spinach)',
+    'broccoli': 'Broccoli',
+    'cauliflower': 'Cauliflower',
+    'carrot': 'Carrot (cooked)',
+    'cucumber': 'Cucumber',
+    'tomato': 'Tomato (raw)',
+    'onion': 'Tomato (raw)',
+    'bell pepper': 'Mixed Vegetable Sabzi',
+    'capsicum': 'Mixed Vegetable Sabzi',
+    'mushroom': 'Mixed Vegetable Sabzi',
+    'potato': 'Sweet Potato (boiled)',
+    'sweet potato': 'Sweet Potato (boiled)',
+    'mixed vegetable': 'Mixed Vegetable Sabzi',
+    'stir fry': 'Mixed Vegetable Sabzi',
+    'sabzi': 'Mixed Vegetable Sabzi',
+    'beans': 'Mixed Vegetable Sabzi',
+    'corn': 'Mixed Vegetable Sabzi',
+
+    // Fruits
+    'banana': 'Banana',
+    'apple': 'Apple',
+    'orange': 'Orange',
+    'guava': 'Guava',
+    'papaya': 'Papaya',
+    'fruit': 'Seasonal Fruit Mix',
+    'mango': 'Seasonal Fruit Mix',
+    'berry': 'Seasonal Fruit Mix',
+    'strawberry': 'Seasonal Fruit Mix',
+
+    // Snacks & extras
+    'salad': 'Sprouts Salad',
+    'sprouts salad': 'Sprouts Salad',
+    'makhana': 'Makhana (Fox Nuts)',
+    'fox nut': 'Makhana (Fox Nuts)',
+    'roasted chana': 'Roasted Chana',
+    'chikki': 'Peanut Chikki',
+    'masala omelette': 'Masala Omelette',
+    'biryani': 'White Rice (cooked)',
+    'fried rice': 'White Rice (cooked)',
+    'curry': 'Chicken Curry (homestyle)',
+    'shake': 'Banana Shake',
+    'smoothie': 'Banana Shake',
+    'banana shake': 'Banana Shake',
+  };
+
+  for (const [key, dbName] of Object.entries(keywords)) {
+    if (lower.includes(key)) {
+      const found = foodDatabase.find((f) => f.name === dbName);
+      if (found) return found;
+    }
+  }
+
+  return null;
+}
+
+export async function analyzeImageWithGroq(
+  base64DataUrl: string,
+): Promise<{ matched: MatchedFood[]; unmatched: string[]; error: string | null }> {
+  try {
+    const result = await analyzeMealImage(base64DataUrl);
+
+    if (result.foods.length === 0) {
+      return { matched: [], unmatched: [], error: 'No food items detected in the image. Try a clearer photo.' };
+    }
+
+    const matched: MatchedFood[] = [];
+    const unmatched: string[] = [];
+
+    for (const detected of result.foods) {
+      const dbFood = matchFoodToDatabase(detected.food);
+      if (dbFood) {
+        matched.push({
+          food: dbFood,
+          quantityGrams: detected.estimated_grams,
+          confidence: 'matched',
+          aiDetectedName: detected.food,
+        });
+      } else {
+        unmatched.push(detected.food);
+      }
+    }
+
+    return { matched, unmatched, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[SCANNER] Vision analysis failed:', message);
+    return { matched: [], unmatched: [], error: `Couldn't analyze this meal. Please try a clearer photo. (${message})` };
+  }
 }
 
 function calculateNutrition(food: FoodItem, quantityGrams: number): ScannedFoodTotals {

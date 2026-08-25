@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { streamChat } from '../lib/groqService';
 import './ChatButton.css';
 
 interface Message {
@@ -17,6 +18,7 @@ export default function ChatButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -30,9 +32,9 @@ export default function ChatButton() {
     }
   }, [isOpen]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(async () => {
     const text = inputValue.trim();
-    if (!text) return;
+    if (!text || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now(),
@@ -40,18 +42,42 @@ export default function ChatButton() {
       sender: 'user',
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
+    const assistantId = Date.now() + 1;
+    const assistantMessage: Message = {
+      id: assistantId,
+      text: '',
+      sender: 'assistant',
+    };
 
-    setTimeout(() => {
-      const reply: Message = {
-        id: Date.now() + 1,
-        text: 'AI connection coming next...',
-        sender: 'assistant',
-      };
-      setMessages((prev) => [...prev, reply]);
-    }, 400);
-  };
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    const chatHistory = [...messages, userMessage].map((m) => ({
+      role: m.sender === 'user' ? 'user' as const : 'assistant' as const,
+      content: m.text,
+    }));
+
+    try {
+      for await (const chunk of streamChat(chatHistory)) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId ? { ...m, text: m.text + chunk } : m
+          )
+        );
+      }
+    } catch {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, text: 'Sorry, something went wrong. Please try again.' }
+            : m
+        )
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  }, [inputValue, isLoading, messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -120,10 +146,10 @@ export default function ChatButton() {
             <button
               className="chat-panel__send"
               onClick={handleSend}
-              disabled={!inputValue.trim()}
+              disabled={!inputValue.trim() || isLoading}
               title="Send"
             >
-              ➤
+              {isLoading ? '...' : '➤'}
             </button>
           </div>
         </div>

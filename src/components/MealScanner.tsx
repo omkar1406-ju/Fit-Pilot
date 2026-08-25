@@ -8,6 +8,7 @@ import {
   calculateMealTotals,
   getDefaultQuantity,
   saveScannedMeal,
+  analyzeImageWithGroq,
 } from '../lib/scannerService';
 import Button from './Button';
 import './MealScanner.css';
@@ -39,8 +40,10 @@ export default function MealScanner({ userId, onSaved }: MealScannerProps) {
   const [searchResults, setSearchResults] = useState<FoodItem[]>([]);
   const [showDropdown, setShowDropdown] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [unmatchedFoods, setUnmatchedFoods] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,11 +88,37 @@ export default function MealScanner({ userId, onSaved }: MealScannerProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleAnalyze = () => {
-    setAnalyzed(true);
-    if (entries.length === 0) {
-      addNewEntry();
+  const handleAnalyze = async () => {
+    if (!imagePreview) return;
+    setAnalyzing(true);
+    setError('');
+    setUnmatchedFoods([]);
+
+    const { matched, unmatched, error: analysisError } = await analyzeImageWithGroq(imagePreview);
+
+    setAnalyzing(false);
+
+    if (analysisError) {
+      setError(analysisError);
+      setAnalyzed(true);
+      return;
     }
+
+    if (matched.length === 0 && unmatched.length === 0) {
+      setError('No food items detected. Try a clearer photo with the meal filling the frame.');
+      setAnalyzed(true);
+      return;
+    }
+
+    const newEntries: ScannedFoodEntry[] = matched.map((m, idx) => ({
+      id: `entry-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+      food: m.food,
+      quantityGrams: m.quantityGrams,
+    }));
+
+    setEntries(newEntries);
+    setUnmatchedFoods(unmatched);
+    setAnalyzed(true);
   };
 
   const addNewEntry = () => {
@@ -172,9 +201,9 @@ export default function MealScanner({ userId, onSaved }: MealScannerProps) {
     <div className="scanner">
       <div className="scanner__header">
         <h3 className="scanner__title">Scan My Meal</h3>
-        <p className="scanner__subtitle">
-          Upload a photo of your meal, then add the foods manually for an instant nutrition estimate.
-        </p>
+          <p className="scanner__subtitle">
+            Upload a photo of your meal and let AI identify the foods and estimate portions.
+          </p>
       </div>
 
       {!imagePreview && (
@@ -210,18 +239,35 @@ export default function MealScanner({ userId, onSaved }: MealScannerProps) {
           </div>
 
           {!analyzed && (
-            <button className="scanner__analyze-btn" onClick={handleAnalyze}>
-              Analyze Meal
+            <button
+              className="scanner__analyze-btn"
+              onClick={handleAnalyze}
+              disabled={analyzing}
+            >
+              {analyzing ? 'Analyzing...' : 'Analyze Meal'}
             </button>
+          )}
+          {analyzing && (
+            <div className="scanner__analyzing">
+              <div className="scanner__spinner" />
+              <p className="scanner__analyzing-text">AI is analyzing your meal photo...</p>
+            </div>
           )}
         </div>
       )}
 
       {analyzed && !saved && (
         <div className="scanner__results">
-          <div className="scanner__notice">
-            Image uploaded successfully. Automatic food recognition requires a vision model. You can add the foods manually below.
-          </div>
+          {entries.length > 0 && (
+            <div className="scanner__notice scanner__notice--success">
+              AI detected {entries.length} food item{entries.length > 1 ? 's' : ''}. Review and edit below.
+            </div>
+          )}
+          {unmatchedFoods.length > 0 && (
+            <div className="scanner__notice scanner__notice--warning">
+              Could not match in database: {unmatchedFoods.join(', ')}. Use "Add Food" to find a substitute.
+            </div>
+          )}
 
           <div className="scanner__meal-type-row">
             <span className="scanner__meal-type-label">Meal type:</span>
