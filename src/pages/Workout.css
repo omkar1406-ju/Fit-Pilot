@@ -110,3 +110,16 @@
   overflow-x: auto;
   color: var(--color-text-secondary);
 }
+
+.workout-page__regenerating {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: var(--radius-md);
+  color: var(--color-primary);
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}

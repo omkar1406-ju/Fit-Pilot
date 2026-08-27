@@ -11,6 +11,8 @@ import Dashboard from './pages/Dashboard';
 import Workout from './pages/Workout';
 import EditProfile from './pages/EditProfile';
 import Nutrition from './pages/Nutrition';
+import Goals from './pages/Goals';
+import StrengthProfile from './pages/StrengthProfile';
 
 export default function App() {
   return (
@@ -43,6 +45,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Nutrition />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/goals"
+            element={
+              <ProtectedRoute>
+                <Goals />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/progress"
+            element={
+              <ProtectedRoute>
+                <StrengthProfile />
               </ProtectedRoute>
             }
           />

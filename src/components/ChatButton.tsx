@@ -10,7 +10,7 @@ interface Message {
 
 const INITIAL_MESSAGE: Message = {
   id: 0,
-  text: "Hey! 👋 I'm your Fitness Assistant. Ask me anything about your workouts, nutrition, recovery, or fitness journey.",
+  text: "Hey! 👋 I'm FitGenie, your personal fitness companion. Ask me anything about workouts, nutrition, recovery, and your fitness journey.",
   sender: 'assistant',
 };
 
@@ -90,12 +90,12 @@ export default function ChatButton() {
     <>
       <button
         className="chat-button"
-        title="Fitness Assistant"
+        title="FitGenie"
         onClick={() => setIsOpen((prev) => !prev)}
       >
         {isOpen ? '✕' : '💬'}
         <span className="chat-button__tooltip">
-          {isOpen ? 'Close Assistant' : 'Ask Fitness Assistant'}
+          {isOpen ? 'Close FitGenie' : 'Ask FitGenie'}
         </span>
       </button>
 
@@ -105,7 +105,7 @@ export default function ChatButton() {
             <div className="chat-panel__header-info">
               <span className="chat-panel__avatar">🤖</span>
               <div>
-                <h3 className="chat-panel__title">Fitness Assistant</h3>
+                <h3 className="chat-panel__title">FitGenie</h3>
                 <p className="chat-panel__subtitle">Your personal fitness companion</p>
               </div>
             </div>

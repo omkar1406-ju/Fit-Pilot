@@ -19,7 +19,6 @@ const features = [
   { icon: '📈', title: 'Progress Tracking', description: 'Visualize your gains with clear, data-driven insights.' },
   { icon: '🥗', title: 'Nutrition Tracking', description: 'Log meals and monitor macros to fuel your performance.' },
   { icon: '🧠', title: 'Smart Planning', description: 'Adaptive plans that evolve as you progress.' },
-  { icon: '🤖', title: 'Fitness Assistant', description: 'Get instant answers and guidance from an AI-powered coach.' },
 ];
 
 const motivations = [

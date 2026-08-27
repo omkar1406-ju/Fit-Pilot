@@ -118,7 +118,7 @@ function pickBestCarb(
   const scored = candidates.map((f) => {
     const calFit = 1 - Math.min(Math.abs(f.calories - targetCal) / Math.max(targetCal, 1), 1);
     const calPerRupee = f.calories / Math.max(f.priceInr, 1);
-    return { food: f, score: calFit * 6 + calPerRupee * 3 + rng() * 0.3 };
+    return { food: f, score: calFit * 6 + calPerRupee * 3 + rng() * 1.5 };
   });
   scored.sort((a, b) => b.score - a.score);
   return scored[0].food;
@@ -133,7 +133,7 @@ function pickBestVegFruit(
   const scored = candidates.map((f) => {
     const calFit = 1 - Math.min(Math.abs(f.calories - targetCal) / Math.max(targetCal, 1), 1);
     const fiberPerRupee = f.fiber / Math.max(f.priceInr, 1);
-    return { food: f, score: calFit * 4 + fiberPerRupee * 4 + rng() * 0.3 };
+    return { food: f, score: calFit * 4 + fiberPerRupee * 4 + rng() * 1.5 };
   });
   scored.sort((a, b) => b.score - a.score);
   return scored[0].food;
@@ -147,7 +147,7 @@ function pickBestExtra(
   if (candidates.length === 0) return null;
   const scored = candidates.map((f) => {
     const calFit = 1 - Math.min(Math.abs(f.calories - targetCal) / Math.max(targetCal, 1), 1);
-    return { food: f, score: calFit * 7 + rng() * 0.5 };
+    return { food: f, score: calFit * 7 + rng() * 2.0 };
   });
   scored.sort((a, b) => b.score - a.score);
   return scored[0].food;
@@ -182,7 +182,7 @@ function pickMaxProtein(
     const scored = candidates.map((f) => {
       const proteinPerRupee = f.protein / Math.max(f.priceInr, 1);
       const calFit = f.calories <= calBudget ? 1 : Math.max(0, 1 - (f.calories - calBudget) / 100);
-      return { food: f, score: proteinPerRupee * 10 + calFit * 3 + rng() * 0.2 };
+      return { food: f, score: proteinPerRupee * 10 + calFit * 3 + rng() * 1.5 };
     });
     scored.sort((a, b) => b.score - a.score);
 
@@ -225,12 +225,13 @@ function generateDayMeals(
   targets: NutritionTargets,
   prefs: NutrientPrefs,
   daySeed: number,
+  excludedNames?: Set<string>,
 ): MealSlot[] {
   const foods = getFoodsForDiet(prefs.diet);
   const allergies = parseList(prefs.allergies);
   const foodsToAvoid = parseList(prefs.foods_to_avoid);
   const mealDistribution = getMealDistribution(prefs.meals_per_day);
-  const usedNames = new Set<string>();
+  const usedNames = new Set<string>(excludedNames);
   const rng = mulberry32(daySeed);
 
   const dailyBudget = prefs.daily_budget_inr;
@@ -498,18 +499,27 @@ export function generateWeeklyPlan(
   let totalCost = 0;
 
   for (let i = 0; i < 7; i++) {
-    const daySeed = Date.now() + i * 7919;
-    const meals = generateDayMeals(targets, prefs, daySeed);
-    const totals = calculateMealNutrition(meals);
-    const cost = calculateMealCost(meals);
-    totalCost += cost;
+    const daySeed = i * 15485863 + Math.floor(Date.now() / 60000);
+    let meals = generateDayMeals(targets, prefs, daySeed);
+    let totals = calculateMealNutrition(meals);
+    let cost = calculateMealCost(meals);
 
-    days.push({
-      dayOfWeek: DAYS_OF_WEEK[i],
-      meals,
-      totals,
-      cost,
-    });
+    if (cost > prefs.daily_budget_inr && prefs.daily_budget_inr > 0) {
+      const scale = prefs.daily_budget_inr / Math.max(cost, 1);
+      const reducedTargets = {
+        calories: Math.round(targets.calories * scale),
+        protein: Math.round(targets.protein * scale),
+        carbs: Math.round(targets.carbs * scale),
+        fat: Math.round(targets.fat * scale),
+        fiber: Math.round(targets.fiber * scale),
+      };
+      meals = generateDayMeals(reducedTargets, prefs, daySeed + 50000);
+      totals = calculateMealNutrition(meals);
+      cost = calculateMealCost(meals);
+    }
+
+    totalCost += cost;
+    days.push({ dayOfWeek: DAYS_OF_WEEK[i], meals, totals, cost });
   }
 
   const avgCost = Math.round(totalCost / 7);
@@ -526,19 +536,35 @@ export function generateDayAlternatives(
 ): GeneratedDayPlan[] {
   const alternatives: GeneratedDayPlan[] = [];
   const dayOfWeek = DAYS_OF_WEEK[dayIndex];
+  const usedAcrossAlts = new Set<string>();
 
   for (let alt = 0; alt < count; alt++) {
-    const daySeed = Date.now() + dayIndex * 7919 + alt * 3571 + 1000;
-    const meals = generateDayMeals(targets, prefs, daySeed);
-    const totals = calculateMealNutrition(meals);
-    const cost = calculateMealCost(meals);
+    const daySeed = dayIndex * 7919 + alt * 99731 + Math.floor(Date.now() / 60000);
+    let meals = generateDayMeals(targets, prefs, daySeed, usedAcrossAlts);
+    let totals = calculateMealNutrition(meals);
+    let cost = calculateMealCost(meals);
 
-    alternatives.push({
-      dayOfWeek,
-      meals,
-      totals,
-      cost,
-    });
+    if (cost > prefs.daily_budget_inr && prefs.daily_budget_inr > 0) {
+      const scale = prefs.daily_budget_inr / Math.max(cost, 1);
+      const reducedTargets = {
+        calories: Math.round(targets.calories * scale),
+        protein: Math.round(targets.protein * scale),
+        carbs: Math.round(targets.carbs * scale),
+        fat: Math.round(targets.fat * scale),
+        fiber: Math.round(targets.fiber * scale),
+      };
+      meals = generateDayMeals(reducedTargets, prefs, daySeed + 50000, usedAcrossAlts);
+      totals = calculateMealNutrition(meals);
+      cost = calculateMealCost(meals);
+    }
+
+    for (const meal of meals) {
+      for (const food of meal.foods) {
+        usedAcrossAlts.add(food.name);
+      }
+    }
+
+    alternatives.push({ dayOfWeek, meals, totals, cost });
   }
 
   return alternatives;

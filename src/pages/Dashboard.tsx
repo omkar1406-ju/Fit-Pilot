@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getGreeting } from '../lib/greeting';
 import { getActivePlan, createPlan } from '../lib/workoutService';
+import { supabase } from '../lib/supabase';
+import { estimate1RM, calculateLiftResult, calculateOverallStrength, type LiftEntry } from '../lib/strengthService';
+import { isBodyweightExercise, LEVEL_COLORS } from '../data/strengthBenchmarks';
 import type { WorkoutPlanWithDays, WorkoutDayWithExercises } from '../types/workout';
 import DashboardHeader from '../components/DashboardHeader';
 import DashboardSidebar from '../components/DashboardSidebar';
@@ -21,6 +24,7 @@ export default function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [showChangePlan, setShowChangePlan] = useState(false);
+  const [lifts, setLifts] = useState<LiftEntry[]>([]);
 
   // Get today's day name
   const getTodayName = useCallback(() => {
@@ -50,6 +54,23 @@ export default function Dashboard() {
   useEffect(() => {
     loadPlan();
   }, [loadPlan]);
+
+  // Fetch lifts for Strength Profile card
+  const loadLifts = useCallback(async () => {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from('user_lifts')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+    if (!error && data) {
+      setLifts(data as LiftEntry[]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    loadLifts();
+  }, [loadLifts]);
 
   const handleCreatePlan = async () => {
     if (!user || !profile) return;
@@ -91,6 +112,46 @@ export default function Dashboard() {
   // Count active training days
   const activeDays = plan?.days.filter((d) => !d.is_recovery_day).length || 0;
 
+  // Compute strength profile summary
+  const strengthSummary = useCallback(() => {
+    if (!profile?.weight || lifts.length === 0) return null;
+
+    const bestByExercise = new Map<string, LiftEntry>();
+    for (const lift of lifts) {
+      const existing = bestByExercise.get(lift.exercise_id);
+      if (!existing) {
+        bestByExercise.set(lift.exercise_id, lift);
+      } else {
+        const isBW = isBodyweightExercise(lift.exercise_id);
+        if (isBW) {
+          const thisScore = lift.reps + (lift.extra_weight_kg || 0) * 0.5;
+          const existScore = existing.reps + (existing.extra_weight_kg || 0) * 0.5;
+          if (thisScore > existScore) bestByExercise.set(lift.exercise_id, lift);
+        } else {
+          if (estimate1RM(lift.weight_kg, lift.reps) > estimate1RM(existing.weight_kg, existing.reps)) {
+            bestByExercise.set(lift.exercise_id, lift);
+          }
+        }
+      }
+    }
+
+    const bestLifts = Array.from(bestByExercise.values());
+    const results = bestLifts.map((l) => calculateLiftResult(l, profile.weight!));
+    const overall = calculateOverallStrength(lifts, profile.weight!);
+
+    // Pick best result by percentile
+    const best = results.sort((a, b) => b.percentile - a.percentile)[0];
+
+    return {
+      count: lifts.length,
+      level: overall?.level || best?.level || 'Beginner',
+      percentile: overall?.percentile || best?.percentile || 10,
+      overall,
+    };
+  }, [lifts, profile?.weight]);
+
+  const strength = strengthSummary();
+
   return (
     <div className="dashboard-layout">
       <DashboardSidebar />
@@ -127,11 +188,28 @@ export default function Dashboard() {
                     : 'Create your plan to start'}
               </div>
             </div>
-            <div className="dashboard__card">
-              <div className="dashboard__card-icon">📈</div>
-              <div className="dashboard__card-label">Progress</div>
-              <div className="dashboard__card-value" style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)' }}>No data yet</div>
-              <div className="dashboard__card-subtext">Start tracking to see progress</div>
+            <div
+              className="dashboard__card"
+              style={{ cursor: 'pointer' }}
+              onClick={() => navigate('/dashboard/progress')}
+            >
+              <div className="dashboard__card-icon">⚡</div>
+              <div className="dashboard__card-label">Strength Profile</div>
+              {strength ? (
+                <>
+                  <div className="dashboard__card-value" style={{ fontSize: '0.9375rem', color: LEVEL_COLORS[strength.level] }}>
+                    {strength.level}
+                  </div>
+                  <div className="dashboard__card-subtext">
+                    {strength.count} lift{strength.count !== 1 ? 's' : ''} logged · Top {100 - strength.percentile}% estimated
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="dashboard__card-value" style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)' }}>No data yet</div>
+                  <div className="dashboard__card-subtext">Log lifts to see your strength ranking</div>
+                </>
+              )}
             </div>
             <div className="dashboard__card">
               <div className="dashboard__card-icon">🔥</div>
@@ -221,13 +299,9 @@ export default function Dashboard() {
                   <span className="dashboard__action-icon">🥗</span>
                   Log Meal
                 </button>
-                <button className="dashboard__action-btn">
-                  <span className="dashboard__action-icon">📈</span>
-                  View Progress
-                </button>
-                <button className="dashboard__action-btn">
-                  <span className="dashboard__action-icon">🤖</span>
-                  Ask Assistant
+                <button className="dashboard__action-btn" onClick={() => navigate('/dashboard/progress')}>
+                  <span className="dashboard__action-icon">⚡</span>
+                  Strength Profile
                 </button>
               </div>
 

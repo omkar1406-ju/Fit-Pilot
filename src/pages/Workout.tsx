@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getActivePlan, createPlan } from '../lib/workoutService';
 import type { WorkoutPlanWithDays, WorkoutDayWithExercises } from '../types/workout';
@@ -9,13 +9,14 @@ import ChangePlanModal from '../components/ChangePlanModal';
 import './Workout.css';
 
 export default function Workout() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [plan, setPlan] = useState<WorkoutPlanWithDays | null>(null);
   const [planLoading, setPlanLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [selectedDay, setSelectedDay] = useState('');
   const [showChangePlan, setShowChangePlan] = useState(false);
   const [error, setError] = useState('');
+  const autoRegeneratedRef = useRef(false);
 
   const getTodayName = useCallback(() => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -25,6 +26,10 @@ export default function Workout() {
   useEffect(() => {
     setSelectedDay(getTodayName());
   }, [getTodayName]);
+
+  useEffect(() => {
+    refreshProfile();
+  }, []);
 
   const loadPlan = useCallback(async () => {
     if (!user) return;
@@ -40,7 +45,7 @@ export default function Workout() {
     loadPlan();
   }, [loadPlan]);
 
-  const handleCreatePlan = async () => {
+  const handleCreatePlan = useCallback(async () => {
     if (!user || !profile) return;
     setCreating(true);
     setError('');
@@ -69,7 +74,24 @@ export default function Workout() {
       setError('An unexpected error occurred. Please try again.');
     }
     setCreating(false);
-  };
+  }, [user, profile, getTodayName]);
+
+  useEffect(() => {
+    if (!plan || !profile || planLoading || creating || autoRegeneratedRef.current) return;
+
+    const planIsOutdated =
+      plan.goal !== profile.goal ||
+      plan.fitness_level !== profile.fitness_level ||
+      plan.training_days_per_week !== profile.training_days_per_week ||
+      plan.workout_duration !== profile.workout_duration ||
+      plan.training_location !== profile.training_location ||
+      plan.equipment !== profile.equipment;
+
+    if (planIsOutdated) {
+      autoRegeneratedRef.current = true;
+      handleCreatePlan();
+    }
+  }, [plan, profile, planLoading, creating, handleCreatePlan]);
 
   const handlePlanChange = () => {
     loadPlan();
@@ -120,6 +142,13 @@ export default function Workout() {
                   <pre>{`-- Copy the contents of supabase/migrations/003_workout_tables.sql and run it here`}</pre>
                 </div>
               )}
+            </div>
+          )}
+
+          {creating && plan && (
+            <div className="workout-page__regenerating">
+              <div className="workout-create__spinner" />
+              <p>Regenerating your plan with updated profile...</p>
             </div>
           )}
 

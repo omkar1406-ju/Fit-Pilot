@@ -5,10 +5,9 @@ import './DashboardSidebar.css';
 const navItems = [
   { icon: '📊', label: 'Overview', path: '/dashboard' },
   { icon: '💪', label: 'Workouts', path: '/dashboard/workouts' },
-  { icon: '📈', label: 'Progress', path: '/dashboard/progress' },
+  { icon: '⚡', label: 'Strength', path: '/dashboard/progress' },
   { icon: '🍽️', label: 'Nutrition', path: '/dashboard/nutrition' },
   { icon: '🎯', label: 'Goals', path: '/dashboard/goals' },
-  { icon: '🤖', label: 'Assistant', path: '/dashboard/assistant' },
   { icon: '👤', label: 'Edit Profile', path: '/dashboard/profile' },
 ];
 
