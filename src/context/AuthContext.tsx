@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initialSessionResolved = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
@@ -67,12 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('[AUTH] ONBOARDING:', data.onboarding_completed ? 'complete' : 'incomplete');
       }
     }
-  };
+  }, []);
 
-  const refreshProfile = async () => {
-    if (!user) return;
-    await fetchProfile(user.id);
-  };
+  const refreshProfile = useCallback(async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    await fetchProfile(currentUser.id);
+  }, [fetchProfile]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
@@ -97,18 +98,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       const newUser = newSession?.user ?? null;
       setUser(newUser);
 
       if (newUser) {
-        if (newUser.id !== currentUserIdRef.current) {
-          currentUserIdRef.current = newUser.id;
-          if (initialSessionResolved.current) {
-            setLoading(true);
-            fetchProfile(newUser.id).finally(() => setLoading(false));
-          }
+        const userChanged = newUser.id !== currentUserIdRef.current;
+        currentUserIdRef.current = newUser.id;
+
+        // Always re-fetch the profile on SIGNED_IN or TOKEN_REFRESHED so that
+        // the profile is guaranteed to be loaded after every login, even when
+        // the userId ref already matches (e.g. login within the same tab).
+        const shouldFetch =
+          initialSessionResolved.current &&
+          (userChanged || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED');
+
+        if (shouldFetch) {
+          setLoading(true);
+          fetchProfile(newUser.id).finally(() => setLoading(false));
         }
       } else {
         currentUserIdRef.current = null;
@@ -117,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchProfile]);
 
   const signUp = async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
@@ -168,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {

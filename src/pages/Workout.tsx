@@ -29,7 +29,7 @@ export default function Workout() {
 
   useEffect(() => {
     refreshProfile();
-  }, []);
+  }, [refreshProfile]);
 
   const loadPlan = useCallback(async () => {
     if (!user) return;

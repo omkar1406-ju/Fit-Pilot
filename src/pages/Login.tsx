@@ -4,6 +4,22 @@ import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
 import './Login.css';
 
+function friendlyError(msg: string): string {
+  if (!msg) return 'An unexpected error occurred. Please try again.';
+  const lower = msg.toLowerCase();
+  if (lower.includes('invalid login credentials') || lower.includes('invalid credentials'))
+    return 'Incorrect email or password. Please try again.';
+  if (lower.includes('email not confirmed'))
+    return 'Please verify your email address before logging in. Check your inbox.';
+  if (lower.includes('too many requests') || lower.includes('rate limit'))
+    return 'Too many login attempts. Please wait a moment and try again.';
+  if (lower.includes('network') || lower.includes('fetch'))
+    return 'Network error. Please check your connection and try again.';
+  if (lower.includes('user not found'))
+    return 'No account found with this email address.';
+  return msg;
+}
+
 export default function Login() {
   const { signIn, signInWithGoogle, profile, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -12,8 +28,13 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Redirect only once BOTH user AND profile are fully resolved.
+  // authLoading is true while session + profile are being fetched — wait for it.
+  // If user is set but profile is null (and authLoading is false) the profiles
+  // row doesn't exist yet — send to onboarding.
   useEffect(() => {
-    if (authLoading || !user) return;
+    if (authLoading) return;   // still resolving session / profile — wait
+    if (!user) return;          // not logged in — stay on login page
     if (profile?.onboarding_completed) {
       navigate('/dashboard', { replace: true });
     } else {
@@ -35,7 +56,7 @@ export default function Login() {
     setLoading(false);
 
     if (signInError) {
-      setError(signInError);
+      setError(friendlyError(signInError));
     }
   };
 
@@ -94,6 +115,8 @@ export default function Login() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={loading}
             />
           </div>
           <div className="form-group">
@@ -104,6 +127,8 @@ export default function Login() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              disabled={loading}
             />
           </div>
           <div className="auth-card__forgot">

@@ -1,17 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 import './Signup.css';
 
 export default function Signup() {
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signInWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,20 +35,50 @@ export default function Signup() {
     }
 
     setLoading(true);
-    const { error: signUpError } = await signUp(email, password);
+    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
     setLoading(false);
 
     if (signUpError) {
-      setError(signUpError);
+      setError(signUpError.message);
       return;
     }
 
-    navigate('/onboarding');
+    // If a session was returned, email confirmation is disabled — go straight to onboarding.
+    // If no session, Supabase requires the user to confirm their email first.
+    if (data.session) {
+      navigate('/onboarding');
+    } else {
+      // No session yet — email confirmation is required.
+      setAwaitingConfirmation(true);
+    }
   };
 
   const handleGoogle = async () => {
     await signInWithGoogle();
   };
+
+  if (awaitingConfirmation) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="auth-card__header">
+            <Link to="/" className="auth-card__logo">
+              <span className="auth-card__logo-mark">FP</span>
+              FitPilot
+            </Link>
+            <h1 className="auth-card__title">Check your email</h1>
+            <p className="auth-card__subtitle">
+              We sent a confirmation link to <strong>{email}</strong>.
+              Click it to activate your account, then come back and log in.
+            </p>
+          </div>
+          <p className="auth-card__footer">
+            Already confirmed? <Link to="/login">Log in</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-page">
@@ -87,6 +119,8 @@ export default function Signup() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={loading}
             />
           </div>
           <div className="form-group">
@@ -97,6 +131,8 @@ export default function Signup() {
               placeholder="Create a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              disabled={loading}
             />
           </div>
           <div className="form-group">
@@ -107,6 +143,8 @@ export default function Signup() {
               placeholder="Confirm your password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              disabled={loading}
             />
           </div>
           <Button type="submit" fullWidth size="lg" disabled={loading}>
